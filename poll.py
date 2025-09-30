@@ -40,11 +40,11 @@ async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
         options=options,
         is_anonymous=False,
     )
-    await context.bot.pin_chat_message(
-        chat_id=update.effective_chat.id,
-        message_id=msg.message_id,
-        disable_notification=False,
-    )
+    #await context.bot.pin_chat_message(
+    #    chat_id=update.effective_chat.id,
+    #    message_id=msg.message_id,
+    #    disable_notification=False,
+    #)
 
     context.bot_data["polls"][msg.poll.id] = {
         "chat_id": update.effective_chat.id,
