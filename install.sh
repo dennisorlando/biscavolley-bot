@@ -2,6 +2,9 @@
 
 # This script installs the biscavolley-bot
 
+# Create the user
+useradd -r -s /bin/false biscavolley
+
 # Ask for the bot token
 read -s -p "Enter the bot token: " BOT_TOKEN
 
@@ -12,7 +15,7 @@ mkdir -p /etc/biscavolley/
 echo "BOT_TOKEN=$BOT_TOKEN" >/etc/biscavolley/environment
 
 # Set the owner of the environment file to the user running the script
-chown $USER /etc/biscavolley/environment
+chown biscavolley /etc/biscavolley/environment
 
 # Set the permissions of the environment file to be read-only by the user
 chmod 400 /etc/biscavolley/environment
@@ -28,6 +31,9 @@ python3 -m venv /opt/biscavolley/venv
 
 # Copy the bot script
 cp biscavolley-bot.py /opt/biscavolley/
+
+# Set the owner of the directory
+chown -R biscavolley:biscavolley /opt/biscavolley
 
 # Copy the service file
 cp biscavolley-bot.service /etc/systemd/system/

@@ -16,3 +16,6 @@ rm -rf /opt/biscavolley/
 
 # Remove the environment file
 rm -rf /etc/biscavolley/
+
+# Notify the user about the user deletion
+echo "The user 'biscavolley' was not deleted automatically. Consider removing it manually, if needed."

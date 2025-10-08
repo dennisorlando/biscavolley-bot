@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=ubuntu
+User=biscavolley
 WorkingDirectory=/opt/biscavolley
 ExecStart=/opt/biscavolley/venv/bin/python3 /opt/biscavolley/biscavolley-bot.py
 Restart=always
