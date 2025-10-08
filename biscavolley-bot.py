@@ -108,6 +108,7 @@ async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
         question=question,
         options=options,
         is_anonymous=False,
+        message_thread_id=update.message.message_thread_id,
     )
 
     if await can_i_pin(update, context):
@@ -121,6 +122,7 @@ async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.bot_data["polls"][msg.poll.id] = {
         "chat_id": update.effective_chat.id,
+        "message_thread_id": update.message.message_thread_id,
         "question": question,
         "options": options,
         "missing": missing_ids,
@@ -162,6 +164,7 @@ async def reminder_job(context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=chat_id,
             text=f"Tutti hanno votato al sondaggio!\n\"{poll['question']}\"",
+            message_thread_id=poll.get("message_thread_id"),
         )
         context.job.schedule_removal()
         return
@@ -170,6 +173,7 @@ async def reminder_job(context: ContextTypes.DEFAULT_TYPE):
         chat_id=chat_id,
         text=f"\[\!\] Queste persone non hanno ancora votato al sondaggio: \n\- @{', @'.join(missing_members)} \n\"{poll['question']}\"",
         parse_mode="MarkdownV2",
+        message_thread_id=poll.get("message_thread_id")
     )
 
 async def stop_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
