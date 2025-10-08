@@ -20,6 +20,12 @@ chmod 400 /etc/biscavolley/environment
 # Create the directory
 mkdir -p /opt/biscavolley/
 
+# Create a virtual environment
+python3 -m venv /opt/biscavolley/venv
+
+# Install the dependencies
+/opt/biscavolley/venv/bin/pip install -r requirements.txt
+
 # Copy the bot script
 cp biscavolley-bot.py /opt/biscavolley/
 

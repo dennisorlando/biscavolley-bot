@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=ubuntu
 WorkingDirectory=/opt/biscavolley
-ExecStart=/usr/bin/python3 /opt/biscavolley/biscavolley-bot.py
+ExecStart=/opt/biscavolley/venv/bin/python3 /opt/biscavolley/biscavolley-bot.py
 Restart=always
 RestartSec=5
 Environment="PYTHONUNBUFFERED=1"
