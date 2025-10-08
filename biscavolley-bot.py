@@ -26,6 +26,7 @@ load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
 async def can_i_pin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return False # diobon perchè non funzioni
     if update.effective_chat.type in ("private"):
         return True
     chat_admins = await context.bot.get_chat_administrators(chat_id=update.effective_chat.id)
