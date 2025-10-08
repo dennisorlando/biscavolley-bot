@@ -5,12 +5,12 @@ After=network.target
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/opt/telegram-bot
-ExecStart=/usr/bin/python3 /opt/telegram-bot/bot.py
+WorkingDirectory=/opt/biscavolley
+ExecStart=/usr/bin/python3 /opt/biscavolley/biscavolley-bot.py
 Restart=always
 RestartSec=5
 Environment="PYTHONUNBUFFERED=1"
-EnvironmentFile=-/etc/biscavolleybot/environment
+EnvironmentFile=-/etc/biscavolley/environment
 
 [Install]
 WantedBy=multi-user.target
