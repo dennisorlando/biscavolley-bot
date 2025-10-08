@@ -28,7 +28,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 async def can_i_pin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type in ("private"):
         return True
-    chat_admins = await update.effective_chat.get_administrators()
+    chat_admins = await context.bot.get_chat_administrators(chat_id=update.effective_chat.id)
     return update.effective_user in (admin.user for admin in chat_admins)
 
 async def manage_people(update: Update, context: ContextTypes.DEFAULT_TYPE):
