@@ -3,7 +3,7 @@
 import logging
 import os
 from dotenv import load_dotenv
-from telegram import Update, BotCommand
+from telegram import Update, BotCommand, Bot
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -26,12 +26,15 @@ load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
 
+async def am_i_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_admins = update.effective_chat.get_administrators()
+    return update.effective_user in (admin.user for admin in chat_admins)
 
 async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /poll <day>")
         return
-    day = " ".join(context.args)
+    day = "".join(context.args)
     question = f"Ci sarai ad allenamento il {day}?"
     options = ["Sì", "No"]
 
@@ -40,11 +43,13 @@ async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
         options=options,
         is_anonymous=False,
     )
-    #await context.bot.pin_chat_message(
-    #    chat_id=update.effective_chat.id,
-    #    message_id=msg.message_id,
-    #    disable_notification=False,
-    #)
+
+    if am_i_admin(update, context):
+        await context.bot.pin_chat_message(
+            chat_id=update.effective_chat.id,
+            message_id=msg.message_id,
+            disable_notification=False,
+        )
 
     context.bot_data["polls"][msg.poll.id] = {
         "chat_id": update.effective_chat.id,
@@ -55,7 +60,7 @@ async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.job_queue.run_repeating(
         reminder_job,
-        interval=5,  # 1 hours
+        interval=5,
         first=5,
         data=msg.poll.id,
         chat_id=update.effective_chat.id,
