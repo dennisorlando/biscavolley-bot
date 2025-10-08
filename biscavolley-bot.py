@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
+async def manage_timeout(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+
 
 async def can_i_pin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type in ("private"):
@@ -75,6 +78,27 @@ async def manage_people(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Usage: /people [add|remove|clear] [@username]")
 
 
+async def manage_delay(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        delay = context.bot_data.get("delay", 3600)
+        await update.message.reply_text(f"Current delay is {delay} seconds.")
+        return
+
+    subcommand = context.args[0]
+    if subcommand == "set":
+        if len(context.args) < 2:
+            await update.message.reply_text("Usage: /delay set <seconds>")
+            return
+        try:
+            delay = int(context.args[1])
+            context.bot_data["delay"] = delay
+            await update.message.reply_text(f"Delay set to {delay} seconds.")
+        except ValueError:
+            await update.message.reply_text("Invalid delay value. Please provide an integer.")
+    else:
+        await update.message.reply_text("Usage: /delay [set] [value]")
+
+
 async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /poll <day>")
@@ -107,8 +131,8 @@ async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.job_queue.run_repeating(
         reminder_job,
-        interval=5,
-        first=5,
+        interval=context.bot_data.get("delay", 3600),
+        first=context.bot_data.get("delay", 3600),
         data=msg.poll.id,
         chat_id=update.effective_chat.id,
         name=f"reminder_{msg.poll.id}",
@@ -192,10 +216,13 @@ async def post_init(application: Application):
         application.bot_data["polls"] = {}
     if "people" not in application.bot_data:
         application.bot_data["people"] = []
+    if "delay" not in application.bot_data:
+        application.bot_data["delay"] = 3600
     await application.bot.set_my_commands([
         BotCommand("poll", "Crea un sondaggio per un dato giorno"),
         BotCommand("stoppoll", "Ferma un sondaggio dato il suo id"),
         BotCommand("people", "Gestisce la lista di persone da pingare"),
+        BotCommand("delay", "Gestisce il delay per i reminder"),
         BotCommand("ping", "Controlla se il bot è online"),
         BotCommand("commands", "Mostra i comandi disponibili"),
     ])
@@ -205,6 +232,7 @@ def main():
     app = Application.builder().token(TOKEN).persistence(persistence).post_init(post_init).build()
     app.add_handler(CommandHandler("poll", start_poll))
     app.add_handler(CommandHandler("people", manage_people))
+    app.add_handler(CommandHandler("delay", manage_delay))
     app.add_handler(CommandHandler("stoppoll", stop_poll))
     app.add_handler(CommandHandler("ping", pong))
     app.add_handler(CommandHandler("commands", bot_commands))
