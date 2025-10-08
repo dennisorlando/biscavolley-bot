@@ -25,10 +25,6 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
-async def manage_timeout(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-
-
 async def can_i_pin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type in ("private"):
         return True
