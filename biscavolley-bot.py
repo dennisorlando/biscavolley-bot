@@ -26,9 +26,54 @@ load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
 
-async def am_i_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_admins = update.effective_chat.get_administrators()
+async def can_i_pin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type in ("private"):
+        return True
+    chat_admins = await update.effective_chat.get_administrators()
     return update.effective_user in (admin.user for admin in chat_admins)
+
+async def manage_people(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        people = context.bot_data.get("people", [])
+        if not people:
+            await update.message.reply_text("Nessuna persona configurata per il ping. Per aggiungere o rimuovere: /people [add|remove|clear] [@username]")
+            return
+        message = "Persone configurate per il ping: \n"
+        for person in people:
+            message += f"- @{person}\n"
+        message += "Per aggiungere o rimuovere: /people add|remove @username"
+        await update.message.reply_text(message)
+        return
+
+    subcommand = context.args[0]
+    if subcommand == "add":
+        if len(context.args) < 2:
+            await update.message.reply_text("Usage: /people add @username")
+            return
+        
+        username = context.args[1].lstrip("@")
+        if username not in context.bot_data["people"]:
+            context.bot_data["people"].append(username)
+            await update.message.reply_text(f"Added @{username} to the ping list.")
+        else:
+            await update.message.reply_text(f"@{username} is already in the ping list.")
+
+    elif subcommand == "remove":
+        if len(context.args) < 2:
+            await update.message.reply_text("Usage: /people remove @username")
+            return
+        username = context.args[1].lstrip("@")
+        if username in context.bot_data["people"]:
+            context.bot_data["people"] = [p for p in context.bot_data["people"] if p != username]
+            await update.message.reply_text(f"Removed @{username} from the ping list.")
+        else:
+            await update.message.reply_text(f"@{username} is not in the ping list.")
+    elif subcommand == "clear":
+        context.bot_data["people"] = []
+        await update.message.reply_text("Ping-list cleared")
+    else:
+        await update.message.reply_text("Usage: /people [add|remove|clear] [@username]")
+
 
 async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
@@ -44,18 +89,20 @@ async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_anonymous=False,
     )
 
-    if am_i_admin(update, context):
+    if await can_i_pin(update, context):
         await context.bot.pin_chat_message(
             chat_id=update.effective_chat.id,
             message_id=msg.message_id,
             disable_notification=False,
         )
 
+    missing_ids = context.bot_data.get("people", [])
+
     context.bot_data["polls"][msg.poll.id] = {
         "chat_id": update.effective_chat.id,
         "question": question,
         "options": options,
-        "voted": set(),
+        "missing": missing_ids,
     }
 
     context.job_queue.run_repeating(
@@ -70,11 +117,17 @@ async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ans = update.poll_answer
     poll_id = ans.poll_id
+
+    print("Triggered!")
+    print(ans.user.username)
+    
     if poll_id in context.bot_data["polls"]:
-        context.bot_data["polls"][poll_id]["voted"].add(ans.user.id)
+        if ans.user.username in context.bot_data["polls"][poll_id]["missing"]:
+            context.bot_data["polls"][poll_id]["missing"].remove(ans.user.username)
 
 async def reminder_job(context: ContextTypes.DEFAULT_TYPE):
     poll_id = context.job.data
+    print(context.bot_data)
     if poll_id not in context.bot_data["polls"]:
         # stop the job if the poll is not found
         context.job.schedule_removal()
@@ -82,25 +135,19 @@ async def reminder_job(context: ContextTypes.DEFAULT_TYPE):
     poll = context.bot_data["polls"][poll_id]
     chat_id = poll["chat_id"]
     
-    # get the list of members in the chat
-    chat_members = await context.bot.get_chat_administrators(chat_id=chat_id)
-    member_ids = {member.user.id for member in chat_members if not member.user.is_bot}
+    missing_members = poll["missing"]
     
-    missing_members_ids = member_ids - poll["voted"]
-    
-    if not missing_members_ids:
+    if not missing_members:
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"Tutti hanno votato al sondaggio '{poll['question']}'!",
+            text=f"Tutti hanno votato al sondaggio!\n\"{poll['question']}\"",
         )
         context.job.schedule_removal()
         return
 
-    # ping the missing members
-    missing_members_mentions = [f"[@{member.user.username}](tg://user?id={member.user.id})" for member in chat_members if member.user.id in missing_members_ids]
     await context.bot.send_message(
         chat_id=chat_id,
-        text=f"Promemoria: {', '.join(missing_members_mentions)} non hanno ancora votato al sondaggio '{poll['question']}'",
+        text=f"\[\!\] Queste persone non hanno ancora votato al sondaggio: \n\- @{', @'.join(missing_members)} \n\"{poll['question']}\"",
         parse_mode="MarkdownV2",
     )
 
@@ -143,9 +190,12 @@ async def receive_poll_update(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def post_init(application: Application):
     if "polls" not in application.bot_data:
         application.bot_data["polls"] = {}
+    if "people" not in application.bot_data:
+        application.bot_data["people"] = []
     await application.bot.set_my_commands([
         BotCommand("poll", "Crea un sondaggio per un dato giorno"),
         BotCommand("stoppoll", "Ferma un sondaggio dato il suo id"),
+        BotCommand("people", "Gestisce la lista di persone da pingare"),
         BotCommand("ping", "Controlla se il bot è online"),
         BotCommand("commands", "Mostra i comandi disponibili"),
     ])
@@ -154,6 +204,7 @@ def main():
     persistence = PicklePersistence(filepath="biscavolleybot.pickle")
     app = Application.builder().token(TOKEN).persistence(persistence).post_init(post_init).build()
     app.add_handler(CommandHandler("poll", start_poll))
+    app.add_handler(CommandHandler("people", manage_people))
     app.add_handler(CommandHandler("stoppoll", stop_poll))
     app.add_handler(CommandHandler("ping", pong))
     app.add_handler(CommandHandler("commands", bot_commands))
