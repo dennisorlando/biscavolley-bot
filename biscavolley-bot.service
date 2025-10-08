@@ -10,6 +10,7 @@ ExecStart=/usr/bin/python3 /opt/telegram-bot/bot.py
 Restart=always
 RestartSec=5
 Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=-/etc/biscavolleybot/environment
 
 [Install]
 WantedBy=multi-user.target

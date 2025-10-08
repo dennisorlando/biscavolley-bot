@@ -13,3 +13,6 @@ systemctl daemon-reload
 
 # Remove the directory
 rm -rf /opt/biscavolley/
+
+# Remove the environment file
+rm -rf /etc/biscavolley/
