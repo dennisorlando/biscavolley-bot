@@ -3,7 +3,7 @@
 # This script installs the biscavolley-bot
 
 # Ask for the bot token
-read -p "Enter the bot token: " BOT_TOKEN
+read -s -p "Enter the bot token: " BOT_TOKEN
 
 # Create the environment file directory
 mkdir -p /etc/biscavolley/
