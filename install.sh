@@ -9,7 +9,7 @@ read -p "Enter the bot token: " BOT_TOKEN
 mkdir -p /etc/biscavolley/
 
 # Write the bot token to the environment file
-echo "BOT_TOKEN=$BOT_TOKEN" > /etc/biscavolley/environment
+echo "BOT_TOKEN=$BOT_TOKEN" >/etc/biscavolley/environment
 
 # Set the owner of the environment file to the user running the script
 chown $USER /etc/biscavolley/environment
@@ -30,4 +30,4 @@ cp biscavolley-bot.service /etc/systemd/system/
 systemctl daemon-reload
 
 # Enable the service
-systemctl enable biscavolley-bot.service
+systemctl enable --now biscavolley-bot.service
