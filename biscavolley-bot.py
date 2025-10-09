@@ -100,7 +100,7 @@ async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /poll <question>")
         return
-    question = "".join(context.args)
+    question = " ".join(context.args)
     options = ["Sì", "No"]
 
     msg = await update.effective_chat.send_poll(
