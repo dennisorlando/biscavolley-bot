@@ -98,10 +98,9 @@ async def manage_delay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("Usage: /poll <day>")
+        await update.message.reply_text("Usage: /poll <question>")
         return
-    day = "".join(context.args)
-    question = f"Ci sarai ad allenamento il {day}?"
+    question = "".join(context.args)
     options = ["Sì", "No"]
 
     msg = await update.effective_chat.send_poll(
@@ -120,19 +119,26 @@ async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     missing_ids = context.bot_data.get("people", [])
 
-    context.bot_data["polls"][msg.poll.id] = {
+
+    index = context.bot_data["index"]
+    context.bot_data["polls"][index] = {
+        "poll_id": msg.poll.id,
         "chat_id": update.effective_chat.id,
         "message_thread_id": update.message.message_thread_id,
         "question": question,
         "options": options,
         "missing": missing_ids,
     }
+    context.bot_data["index"] = index+1
 
     context.job_queue.run_repeating(
         reminder_job,
         interval=context.bot_data.get("delay", 3600),
         first=context.bot_data.get("delay", 3600),
-        data=msg.poll.id,
+        data={
+            "poll_id": msg.poll.id,
+            "index": index
+        },
         chat_id=update.effective_chat.id,
         name=f"reminder_{msg.poll.id}",
     )
@@ -140,22 +146,21 @@ async def start_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ans = update.poll_answer
     poll_id = ans.poll_id
-
-    print("Triggered!")
-    print(ans.user.username)
+    poll_idx = next((i for i, p in context.bot_data["polls"].items() if p is not None and p["poll_id"] == poll_id), None)
     
-    if poll_id in context.bot_data["polls"]:
-        if ans.user.username in context.bot_data["polls"][poll_id]["missing"]:
-            context.bot_data["polls"][poll_id]["missing"].remove(ans.user.username)
+
+    if poll_idx in context.bot_data["polls"] and context.bot_data["polls"][poll_idx] is not None:
+        if ans.user.username in context.bot_data["polls"][poll_idx]["missing"]:
+            context.bot_data["polls"][poll_idx]["missing"].remove(ans.user.username)
 
 async def reminder_job(context: ContextTypes.DEFAULT_TYPE):
-    poll_id = context.job.data
-    print(context.bot_data)
-    if poll_id not in context.bot_data["polls"]:
+    poll_id = context.job.data["poll_id"]
+    poll_idx = context.job.data["index"]
+    if poll_idx not in context.bot_data["polls"] or context.bot_data["polls"][poll_idx] is None:
         # stop the job if the poll is not found
         context.job.schedule_removal()
         return
-    poll = context.bot_data["polls"][poll_id]
+    poll = context.bot_data["polls"][poll_idx]
     chat_id = poll["chat_id"]
     
     missing_members = poll["missing"]
@@ -167,6 +172,7 @@ async def reminder_job(context: ContextTypes.DEFAULT_TYPE):
             message_thread_id=poll.get("message_thread_id"),
         )
         context.job.schedule_removal()
+        context.bot_data["polls"][poll_idx] = None
         return
 
     await context.bot.send_message(
@@ -178,22 +184,23 @@ async def reminder_job(context: ContextTypes.DEFAULT_TYPE):
 
 async def stop_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("Usage: /stoppoll <poll_id>")
+        await update.message.reply_text("Usage: /stoppoll <poll_index>\nAvailable polls:")
+        await update.message.reply_text(context.bot_data["polls"])
         return
-    poll_id = context.args[0]
-    if poll_id not in context.bot_data["polls"]:
-        await update.message.reply_text(f"Sondaggio {poll_id} non trovato")
+    poll_idx = int(context.args[0])
+    if poll_idx not in context.bot_data["polls"] or context.bot_data["polls"][poll_idx] is None:
+        await update.message.reply_text(f"Sondaggio {poll_idx} non trovato")
         return
 
     # remove the job from the queue
-    jobs = context.job_queue.get_jobs_by_name(f"reminder_{poll_id}")
+    jobs = context.job_queue.get_jobs_by_name(f"reminder_{context.bot_data['polls'][poll_idx]['poll_id']}")
     for job in jobs:
         job.schedule_removal()
 
     # remove the poll from the state
-    del context.bot_data["polls"][poll_id]
+    context.bot_data["polls"][poll_idx] = None
 
-    await update.message.reply_text(f"Sondaggio {poll_id} fermato")
+    await update.message.reply_text(f"Sondaggio {poll_idx} fermato")
 
 async def pong(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("pong")
@@ -215,6 +222,8 @@ async def receive_poll_update(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def post_init(application: Application):
     if "polls" not in application.bot_data:
         application.bot_data["polls"] = {}
+    if "index" not in application.bot_data:
+        application.bot_data["index"] = 0
     if "people" not in application.bot_data:
         application.bot_data["people"] = []
     if "delay" not in application.bot_data:
