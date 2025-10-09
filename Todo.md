@@ -1,0 +1,3 @@
+- restore repeating jobs when restarting serviceù
+- display delay in /stoppoll
+- change /stoppoll to /polls and /polls remove
