@@ -5,20 +5,22 @@
 # Create the user
 useradd -r -s /bin/false biscavolley
 
-# Ask for the bot token
-read -s -p "Enter the bot token: " BOT_TOKEN
+if [ "$1" != "--skip-token" ]; then
+  # Ask for the bot token
+  read -s -p "Enter the bot token: " BOT_TOKEN
 
-# Create the environment file directory
-mkdir -p /etc/biscavolley/
+  # Create the environment file directory
+  mkdir -p /etc/biscavolley/
 
-# Write the bot token to the environment file
-echo "BOT_TOKEN=$BOT_TOKEN" >/etc/biscavolley/environment
+  # Write the bot token to the environment file
+  echo "BOT_TOKEN=$BOT_TOKEN" >/etc/biscavolley/environment
 
-# Set the owner of the environment file to the user running the script
-chown biscavolley /etc/biscavolley/environment
+  # Set the owner of the environment file to the user running the script
+  chown biscavolley /etc/biscavolley/environment
 
-# Set the permissions of the environment file to be read-only by the user
-chmod 400 /etc/biscavolley/environment
+  # Set the permissions of the environment file to be read-only by the user
+  chmod 400 /etc/biscavolley/environment
+fi
 
 # Create the directory
 mkdir -p /opt/biscavolley/
