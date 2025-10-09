@@ -184,10 +184,24 @@ async def reminder_job(context: ContextTypes.DEFAULT_TYPE):
 
 async def stop_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("Usage: /stoppoll <poll_index>\nAvailable polls:")
-        await update.message.reply_text(context.bot_data["polls"])
+        polls = context.bot_data.get("polls", {})
+        if not polls:
+            await update.message.reply_text("Nessun sondaggio attivo.")
+            return
+        message = "Sondaggi attivi:\n"
+        for index, poll in polls.items():
+            if poll:
+                message += f"- {index}: {poll['question']}\n"
+        
+        await update.message.reply_text(message)
         return
-    poll_idx = int(context.args[0])
+    
+    try:
+        poll_idx = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("Indice non valido, deve essere un numero.")
+        return
+
     if poll_idx not in context.bot_data["polls"] or context.bot_data["polls"][poll_idx] is None:
         await update.message.reply_text(f"Sondaggio {poll_idx} non trovato")
         return
